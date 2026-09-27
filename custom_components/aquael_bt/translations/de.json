@@ -1,0 +1,16 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Dieses Aquael-BT-Gerät ist bereits eingerichtet.",
+      "bluetooth_required": "Ein unterstütztes Aquael-BT-Gerät muss zuerst über Bluetooth erkannt werden.",
+      "not_supported": "Dieses Aquael-BT-Gerät wird noch nicht unterstützt."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_temperature": {
+        "name": "Wassertemperatur"
+      }
+    }
+  }
+}
