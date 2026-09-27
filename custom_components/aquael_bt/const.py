@@ -1,0 +1,10 @@
+"""Constants for the Aquael BT integration."""
+
+DOMAIN = "aquael_bt"
+SERVICE_DATA_UUID = "0000a0b7-0000-1000-8000-00805f9b34fb"
+
+DEVICE_TYPE_FLOW_HEATER = 0x04
+FLOW_HEATER_MIN_PAYLOAD_LENGTH = 18
+
+MANUFACTURER = "Aquael"
+MODEL_FLOW_HEATER = "Flow Heater BT"
