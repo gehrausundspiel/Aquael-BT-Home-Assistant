@@ -16,7 +16,6 @@ _LOGGER = logging.getLogger(__name__)
 
 FLOW_HEATER_TARGET_UUID = "b3a10002-8df0-11ee-b9d1-0242ac120002"
 FLOW_HEATER_POWER_UUID = "b3a10004-8df0-11ee-b9d1-0242ac120002"
-
 ULTRAMAX_FILTRATION_UUID = "19b10001-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_FLOW_UUID = "19b10003-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_FLOW_SCALE = 4096
@@ -35,18 +34,24 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
         self.address = address
         self.device_type = device_type
 
-    async def _async_update_data(self) -> dict[str, float | int | bool]:
+    async def _async_connect(self) -> BleakClient:
+        """Connect through Home Assistant's recommended retry connector."""
         ble_device = async_ble_device_from_address(
             self.hass, self.address, connectable=True
         )
         if ble_device is None:
-            if self.data:
-                _LOGGER.debug("Keeping last Aquael GATT values: no connectable BLE path")
-                return self.data
-            raise UpdateFailed("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
+            raise RuntimeError("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
+        return await establish_connection(
+            BleakClient,
+            ble_device,
+            self.address,
+            max_attempts=3,
+        )
 
+    async def _async_update_data(self) -> dict[str, float | int | bool]:
         try:
-            client = await establish_connection(\n                BleakClient, ble_device, self.address, max_attempts=3\n            )\n            try:
+            client = await self._async_connect()
+            try:
                 if self.device_type == 0x04:
                     target_raw = await client.read_gatt_char(FLOW_HEATER_TARGET_UUID)
                     power_raw = await client.read_gatt_char(FLOW_HEATER_POWER_UUID)
@@ -68,9 +73,16 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                         "flow_percent": raw_flow * 100.0 / ULTRAMAX_FLOW_SCALE,
                     }
 
-                raise ValueError(f"Nicht unterstützter Aquael-Gerätetyp: {self.device_type:#x}")\n            finally:\n                await client.disconnect()\n        except Exception as err:
+                raise ValueError(
+                    f"Nicht unterstützter Aquael-Gerätetyp: {self.device_type:#x}"
+                )
+            finally:
+                await client.disconnect()
+        except Exception as err:
             if self.data:
-                _LOGGER.debug("Keeping last Aquael GATT values after read failure: %s", err)
+                _LOGGER.debug(
+                    "Keeping last Aquael GATT values after read failure: %s", err
+                )
                 return self.data
             raise UpdateFailed(f"Bluetooth-GATT-Lesen fehlgeschlagen: {err}") from err
 
@@ -78,23 +90,20 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
         """Write a GATT setting with retry."""
         last_error: Exception | None = None
         for attempt in range(3):
-            ble_device = async_ble_device_from_address(
-                self.hass, self.address, connectable=True
-            )
-            if ble_device is None:
-                last_error = RuntimeError(
-                    "Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar"
-                )
-            else:
+            try:
+                client = await self._async_connect()
                 try:
-                    client = await establish_connection(\n                BleakClient, ble_device, self.address, max_attempts=3\n            )\n            try:
-                        await client.write_gatt_char(characteristic, payload, response=True)
-                    last_error = None
-                    break
-                except Exception as err:
-                    last_error = err
-            if attempt < 2:
-                await asyncio.sleep(2.0)
+                    await client.write_gatt_char(
+                        characteristic, payload, response=True
+                    )
+                finally:
+                    await client.disconnect()
+                last_error = None
+                break
+            except Exception as err:
+                last_error = err
+                if attempt < 2:
+                    await asyncio.sleep(2.0)
 
         if last_error is not None:
             raise UpdateFailed(
@@ -104,13 +113,19 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
         if self.data:
             updated = dict(self.data)
             if characteristic == FLOW_HEATER_TARGET_UUID:
-                updated["target_temperature"] = int.from_bytes(payload, "little") / 100.0
+                updated["target_temperature"] = (
+                    int.from_bytes(payload, "little") / 100.0
+                )
             elif characteristic == FLOW_HEATER_POWER_UUID:
                 updated["heating_power_limit"] = int.from_bytes(payload, "little")
             elif characteristic == ULTRAMAX_FILTRATION_UUID:
                 updated["filtration"] = payload[0] != 0
             elif characteristic == ULTRAMAX_FLOW_UUID:
-                updated["flow_percent"] = int.from_bytes(payload, "little") * 100.0 / ULTRAMAX_FLOW_SCALE
+                updated["flow_percent"] = (
+                    int.from_bytes(payload, "little")
+                    * 100.0
+                    / ULTRAMAX_FLOW_SCALE
+                )
             self.async_set_updated_data(updated)
         await self.async_request_refresh()
 
