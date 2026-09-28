@@ -26,14 +26,12 @@ RSSI_KEY = PassiveBluetoothEntityKey("signal_strength", None)
 
 TEMPERATURE_DESCRIPTION = SensorEntityDescription(
     key="temperature",
-    translation_key="water_temperature",
     device_class=SensorDeviceClass.TEMPERATURE,
     native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     state_class=SensorStateClass.MEASUREMENT,
 )
 RSSI_DESCRIPTION = SensorEntityDescription(
     key="signal_strength",
-    translation_key="signal_strength",
     device_class=SensorDeviceClass.SIGNAL_STRENGTH,
     native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     state_class=SensorStateClass.MEASUREMENT,
@@ -48,6 +46,7 @@ def _sensor_update_to_bluetooth_data_update(
         return PassiveBluetoothDataUpdate()
 
     device_info = DeviceInfo(
+        connections={("bluetooth", update.address)},
         identifiers={(DOMAIN, update.address)},
         manufacturer=MANUFACTURER,
         model=update.model,
@@ -59,12 +58,12 @@ def _sensor_update_to_bluetooth_data_update(
 
     if update.rssi is not None:
         descriptions[RSSI_KEY] = RSSI_DESCRIPTION
-        names[RSSI_KEY] = "Signal strength"
+        names[RSSI_KEY] = "Signalstärke"
         data[RSSI_KEY] = update.rssi
 
     if update.device_type == DEVICE_TYPE_FLOW_HEATER and update.temperature is not None:
         descriptions[TEMPERATURE_KEY] = TEMPERATURE_DESCRIPTION
-        names[TEMPERATURE_KEY] = "Water temperature"
+        names[TEMPERATURE_KEY] = "Wassertemperatur"
         data[TEMPERATURE_KEY] = update.temperature
 
     return PassiveBluetoothDataUpdate(
