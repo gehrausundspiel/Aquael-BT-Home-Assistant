@@ -33,6 +33,9 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int]]):
             self.hass, self.address, connectable=True
         )
         if ble_device is None:
+            if self.data:
+                _LOGGER.debug("Keeping last Aquael GATT values: no connectable BLE path")
+                return self.data
             raise UpdateFailed("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
 
         try:
@@ -40,9 +43,15 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int]]):
                 target_raw = await client.read_gatt_char(FLOW_HEATER_TARGET_UUID)
                 power_raw = await client.read_gatt_char(FLOW_HEATER_POWER_UUID)
         except Exception as err:
+            if self.data:
+                _LOGGER.debug("Keeping last Aquael GATT values after read failure: %s", err)
+                return self.data
             raise UpdateFailed(f"Bluetooth-GATT-Lesen fehlgeschlagen: {err}") from err
 
         if len(target_raw) < 4 or len(power_raw) < 4:
+            if self.data:
+                _LOGGER.debug("Keeping last Aquael GATT values after invalid data length")
+                return self.data
             raise UpdateFailed("Unerwartete GATT-Datenlänge")
 
         return {
@@ -65,4 +74,10 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int]]):
         except Exception as err:
             raise UpdateFailed(f"Bluetooth-GATT-Schreiben fehlgeschlagen: {err}") from err
 
+        # Keep the UI stable while the heater disconnects/re-advertises after a write.
+        if self.data:
+            if characteristic == FLOW_HEATER_TARGET_UUID:
+                self.async_set_updated_data({**self.data, "target_temperature": value / 100.0})
+            elif characteristic == FLOW_HEATER_POWER_UUID:
+                self.async_set_updated_data({**self.data, "heating_power_limit": value})
         await self.async_request_refresh()
