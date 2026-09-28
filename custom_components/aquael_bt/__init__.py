@@ -14,7 +14,7 @@ from .parser import parse_advertisement
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.NUMBER]
 
 type AquaelConfigEntry = ConfigEntry[PassiveBluetoothProcessorCoordinator]
 
