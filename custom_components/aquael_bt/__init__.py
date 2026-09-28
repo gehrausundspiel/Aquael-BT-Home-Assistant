@@ -9,6 +9,7 @@ from homeassistant.components.bluetooth.passive_update_processor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from .parser import parse_advertisement
 
@@ -33,6 +34,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: AquaelConfigEntry) -> bo
         connectable=False,
     )
     entry.runtime_data = coordinator
+
+    # Remove duplicate legacy devices created by v0.1.5. The entities will be
+    # re-associated with the canonical Bluetooth device on platform setup.
+    device_registry = dr.async_get(hass)
+    matching_devices = [
+        device
+        for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+        if (DOMAIN, address) in device.identifiers
+        or ("bluetooth", address) in device.connections
+    ]
+    if len(matching_devices) > 1:
+        canonical = next(
+            (
+                device
+                for device in matching_devices
+                if ("bluetooth", address) in device.connections
+            ),
+            matching_devices[0],
+        )
+        for device in matching_devices:
+            if device.id != canonical.id:
+                device_registry.async_remove_device(device.id)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(coordinator.async_start())
