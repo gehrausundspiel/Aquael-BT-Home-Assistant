@@ -7,6 +7,7 @@ from datetime import timedelta
 import logging
 
 from bleak import BleakClient
+from bleak_retry_connector import establish_connection
 from homeassistant.components.bluetooth import async_ble_device_from_address
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -45,7 +46,7 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
             raise UpdateFailed("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
 
         try:
-            async with BleakClient(ble_device, timeout=15.0) as client:
+            client = await establish_connection(\n                BleakClient, ble_device, self.address, max_attempts=3\n            )\n            try:
                 if self.device_type == 0x04:
                     target_raw = await client.read_gatt_char(FLOW_HEATER_TARGET_UUID)
                     power_raw = await client.read_gatt_char(FLOW_HEATER_POWER_UUID)
@@ -67,8 +68,7 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                         "flow_percent": raw_flow * 100.0 / ULTRAMAX_FLOW_SCALE,
                     }
 
-                raise ValueError(f"Nicht unterstützter Aquael-Gerätetyp: {self.device_type:#x}")
-        except Exception as err:
+                raise ValueError(f"Nicht unterstützter Aquael-Gerätetyp: {self.device_type:#x}")\n            finally:\n                await client.disconnect()\n        except Exception as err:
             if self.data:
                 _LOGGER.debug("Keeping last Aquael GATT values after read failure: %s", err)
                 return self.data
@@ -87,7 +87,7 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                 )
             else:
                 try:
-                    async with BleakClient(ble_device, timeout=15.0) as client:
+                    client = await establish_connection(\n                BleakClient, ble_device, self.address, max_attempts=3\n            )\n            try:
                         await client.write_gatt_char(characteristic, payload, response=True)
                     last_error = None
                     break
