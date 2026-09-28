@@ -1,8 +1,18 @@
 {
   "config": {
+    "step": {
+      "user": {
+        "title": "Aquael-BT-Gerät auswählen",
+        "description": "Wähle ein aktuell sichtbares, unterstütztes Aquael-Bluetooth-Gerät aus.",
+        "data": {
+          "device": "Gerät"
+        }
+      }
+    },
     "abort": {
       "already_configured": "Dieses Aquael-BT-Gerät ist bereits eingerichtet.",
-      "bluetooth_required": "Ein unterstütztes Aquael-BT-Gerät muss zuerst über Bluetooth erkannt werden.",
+      "device_not_found": "Das ausgewählte Aquael-BT-Gerät ist nicht mehr sichtbar.",
+      "no_devices_found": "Aktuell sind keine unterstützten Aquael-BT-Geräte sichtbar.",
       "not_supported": "Dieses Aquael-BT-Gerät wird noch nicht unterstützt."
     }
   },
