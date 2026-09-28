@@ -1,22 +1,13 @@
 {
   "domain": "aquael_bt",
   "name": "Aquael BT",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "config_flow": true,
-  "dependencies": [
-    "bluetooth_adapters"
-  ],
+  "dependencies": ["bluetooth_adapters"],
   "documentation": "https://github.com/gehrausundspiel/Aquael-BT-Home-Assistant",
   "issue_tracker": "https://github.com/gehrausundspiel/Aquael-BT-Home-Assistant/issues",
-  "codeowners": [
-    "@gehrausundspiel"
-  ],
+  "codeowners": ["@gehrausundspiel"],
   "integration_type": "device",
   "iot_class": "local_push",
-  "bluetooth": [
-    {
-      "service_data_uuid": "0000a0b7-0000-1000-8000-00805f9b34fb",
-      "connectable": false
-    }
-  ]
+  "bluetooth": [{"service_data_uuid": "0000a0b7-0000-1000-8000-00805f9b34fb", "connectable": false}]
 }
