@@ -31,7 +31,8 @@ async def async_setup_entry(
         return
 
     coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-    await coordinator.async_config_entry_first_refresh()
+    # Do not block platform setup on the first BLE connection. The entity is
+    # created immediately and the coordinator retries through normal updates.
     async_add_entities([AquaelUltramaxFiltrationSwitch(coordinator, address)])
 
 
