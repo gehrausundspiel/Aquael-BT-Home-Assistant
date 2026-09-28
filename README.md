@@ -1,49 +1,107 @@
 # Aquael BT for Home Assistant
 
-Experimental local Bluetooth integration for Aquael BT aquarium devices.
+[English](#english) · [Deutsch](#deutsch)
 
-## Current status — v0.1.1
+---
 
-Initial development version for **Flow Heater BT**.
+## English
 
-- Local/passive Bluetooth advertisements only
-- Automatic discovery via Aquael service-data UUID `0xA0B7`
-- Manual setup with a dropdown of currently visible supported Aquael BT devices
-- No hard-coded device MAC address
-- Flow Heater identification from the advertisement protocol
+### Overview
+
+Aquael BT is an experimental Home Assistant custom integration for compatible Aquael Bluetooth aquarium devices. It communicates locally over Bluetooth and does not require a cloud connection.
+
+### Current status
+
+Development version with initial support for **Aquael Flow Heater BT**.
+
+- Local passive Bluetooth communication
+- Automatic discovery using the Aquael service-data UUID `0xA0B7`
+- Manual setup with a dropdown of currently visible supported devices
+- Device addresses are discovered dynamically and are not hard-coded
+- Flow Heater BT identification from Bluetooth advertisement data
 - Water temperature sensor
-- No cloud
-- No writes or device control yet
-- ULTRAMAX BT support is planned
+- No cloud dependency
+- No device-control commands yet
+- Support for additional Aquael BT devices, including ULTRAMAX BT, is planned
 
-## Device setup
+### Setup
 
-Home Assistant can add a supported device in two ways:
+A supported device can be added in two ways:
 
-1. Automatic Bluetooth discovery.
-2. Settings → Devices & services → Add integration → **Aquael BT**, then select a currently visible supported device from the dropdown.
+1. Automatic Home Assistant Bluetooth discovery.
+2. **Settings → Devices & services → Add integration → Aquael BT**, then select a currently visible supported device.
 
-The Bluetooth address is used only as the unique ID for the selected physical device. It is not hard-coded into the integration.
+The Bluetooth address is used only as the unique identifier for the selected physical device.
 
-## Reverse-engineered advertisement
+### Reverse-engineered protocol
 
-Observed Flow Heater BT service-data payloads indicate:
+Observed Flow Heater BT service-data advertisements indicate:
 
 - bytes 0–1: `41 51` (`AQ`)
-- bytes 4–9: device MAC
+- bytes 4–9: Bluetooth device address
 - byte 10: device type (`0x04` observed for Flow Heater BT)
 - bytes 16–17: little-endian temperature in 1/100 °C (working hypothesis)
 
 Example: `24 0A` → `0x0A24` → 2596 → **25.96 °C**.
 
-The decoder applies sanity checks and ignores packets that do not match the expected Aquael Flow Heater format.
+The decoder applies plausibility checks. Protocol details are based on reverse engineering and may change as additional devices and firmware versions are tested.
 
-## Installation (development)
+### Installation
 
-Install the repository as a custom HACS integration and restart Home Assistant.
+Install this repository as a custom HACS integration and restart Home Assistant.
 
-## Important
+### Disclaimer
 
-This project is reverse-engineered and is not affiliated with or endorsed by Aquael.
+This is an independent community project based on reverse engineering. It is not affiliated with, sponsored by, or endorsed by Aquael.
 
-Device control will only be added after the protocol has been sufficiently understood and tested.
+---
+
+## Deutsch
+
+### Übersicht
+
+Aquael BT ist eine experimentelle Home-Assistant-Custom-Integration für kompatible Aquael-Bluetooth-Aquariengeräte. Die Kommunikation erfolgt lokal über Bluetooth und benötigt keine Cloud-Verbindung.
+
+### Aktueller Stand
+
+Entwicklungsversion mit erster Unterstützung für den **Aquael Flow Heater BT**.
+
+- Lokale passive Bluetooth-Kommunikation
+- Automatische Erkennung über die Aquael-Service-Data-UUID `0xA0B7`
+- Manuelle Einrichtung mit Auswahl aktuell sichtbarer unterstützter Geräte
+- Geräteadressen werden dynamisch erkannt und sind nicht fest einprogrammiert
+- Erkennung des Flow Heater BT anhand der Bluetooth-Advertisement-Daten
+- Sensor für die Wassertemperatur
+- Keine Cloud-Abhängigkeit
+- Noch keine Steuerbefehle an die Geräte
+- Unterstützung weiterer Aquael-BT-Geräte, einschließlich ULTRAMAX BT, ist geplant
+
+### Einrichtung
+
+Ein unterstütztes Gerät kann auf zwei Wegen hinzugefügt werden:
+
+1. Automatisch über die Bluetooth-Erkennung von Home Assistant.
+2. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Aquael BT** und anschließend ein aktuell sichtbares unterstütztes Gerät auswählen.
+
+Die Bluetooth-Adresse wird ausschließlich als eindeutige Kennung des ausgewählten physischen Geräts verwendet.
+
+### Reverse Engineering des Protokolls
+
+Beobachtete Service-Data-Advertisements des Flow Heater BT deuten auf folgende Struktur hin:
+
+- Bytes 0–1: `41 51` (`AQ`)
+- Bytes 4–9: Bluetooth-Geräteadresse
+- Byte 10: Gerätetyp (`0x04` beim Flow Heater BT beobachtet)
+- Bytes 16–17: Little-Endian-Temperatur in 1/100 °C (Arbeitshypothese)
+
+Beispiel: `24 0A` → `0x0A24` → 2596 → **25,96 °C**.
+
+Der Decoder führt Plausibilitätsprüfungen durch. Die Protokolldetails basieren auf Reverse Engineering und können sich mit weiteren getesteten Geräten und Firmware-Versionen ändern.
+
+### Installation
+
+Dieses Repository als benutzerdefinierte HACS-Integration installieren und Home Assistant anschließend neu starten.
+
+### Hinweis
+
+Dies ist ein unabhängiges Community-Projekt auf Basis von Reverse Engineering. Es besteht keine Verbindung, Partnerschaft oder offizielle Unterstützung durch Aquael.
