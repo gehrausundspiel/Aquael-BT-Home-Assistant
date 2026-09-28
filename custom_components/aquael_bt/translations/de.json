@@ -2,17 +2,17 @@
   "config": {
     "step": {
       "user": {
-        "title": "Aquael-BT-Gerät auswählen",
-        "description": "Wähle ein aktuell sichtbares, unterstütztes Aquael-Bluetooth-Gerät aus.",
+        "title": "Bluetooth-Gerät auswählen",
+        "description": "Wähle ein aktuell sichtbares Bluetooth-Gerät. Bekannte Aquael-Geräte werden automatisch erkannt.",
         "data": {
-          "device": "Gerät"
+          "address": "Gerät"
         }
       }
     },
     "abort": {
       "already_configured": "Dieses Aquael-BT-Gerät ist bereits eingerichtet.",
-      "device_not_found": "Das ausgewählte Aquael-BT-Gerät ist nicht mehr sichtbar.",
-      "no_devices_found": "Aktuell sind keine unterstützten Aquael-BT-Geräte sichtbar.",
+      "device_not_found": "Das ausgewählte Bluetooth-Gerät ist nicht mehr sichtbar.",
+      "no_devices_found": "Aktuell sind keine Bluetooth-Geräte sichtbar.",
       "not_supported": "Dieses Aquael-BT-Gerät wird noch nicht unterstützt."
     }
   },
@@ -20,6 +20,9 @@
     "sensor": {
       "water_temperature": {
         "name": "Wassertemperatur"
+      },
+      "signal_strength": {
+        "name": "Signalstärke"
       }
     }
   }
