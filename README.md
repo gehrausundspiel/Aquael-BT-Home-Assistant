@@ -1,8 +1,8 @@
 # Aquael BT for Home Assistant
 
-![Aquael BT icon](icon)
+![Aquael BT icon](icon.png)
 
-**Development version: v0.1.3**
+**Development version: v0.1.4**
 
 [English](#english) · [Deutsch](#deutsch)
 
@@ -26,7 +26,7 @@ Development version with initial support for **Aquael Flow Heater BT**.
 - Water temperature sensor
 - No cloud dependency
 - No device-control commands yet
-- Support for additional Aquael BT devices, including ULTRAMAX BT, is planned
+- Initial ULTRAMAX BT support with device identification and Bluetooth signal-strength sensor
 
 ### Setup
 
@@ -78,7 +78,7 @@ Entwicklungsversion mit erster Unterstützung für den **Aquael Flow Heater BT**
 - Sensor für die Wassertemperatur
 - Keine Cloud-Abhängigkeit
 - Noch keine Steuerbefehle an die Geräte
-- Unterstützung weiterer Aquael-BT-Geräte, einschließlich ULTRAMAX BT, ist geplant
+- Erste ULTRAMAX-BT-Unterstützung mit Geräteerkennung und Bluetooth-Signalstärke-Sensor
 
 ### Einrichtung
 
