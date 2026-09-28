@@ -1,6 +1,6 @@
 # Aquael BT for Home Assistant
 
-![Aquael BT icon](icon.png)
+<img src="icon.png" alt="Aquael BT" width="128">
 
 **Development version: v0.1.4**
 
