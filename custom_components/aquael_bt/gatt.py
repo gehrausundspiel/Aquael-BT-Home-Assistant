@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import logging
 
@@ -68,11 +69,35 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int]]):
             raise UpdateFailed("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
 
         payload = int(value).to_bytes(4, "little", signed=False)
-        try:
-            async with BleakClient(ble_device, timeout=15.0) as client:
-                await client.write_gatt_char(characteristic, payload, response=True)
-        except Exception as err:
-            raise UpdateFailed(f"Bluetooth-GATT-Schreiben fehlgeschlagen: {err}") from err
+        last_error: Exception | None = None
+        for attempt in range(3):
+            # Resolve the best connectable path again for every attempt; proxies can
+            # change while the heater disconnects and starts advertising again.
+            ble_device = async_ble_device_from_address(
+                self.hass, self.address, connectable=True
+            )
+            if ble_device is None:
+                last_error = RuntimeError(
+                    "Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar"
+                )
+            else:
+                try:
+                    async with BleakClient(ble_device, timeout=15.0) as client:
+                        await client.write_gatt_char(
+                            characteristic, payload, response=True
+                        )
+                    last_error = None
+                    break
+                except Exception as err:
+                    last_error = err
+
+            if attempt < 2:
+                await asyncio.sleep(2.0)
+
+        if last_error is not None:
+            raise UpdateFailed(
+                f"Bluetooth-GATT-Schreiben nach 3 Versuchen fehlgeschlagen: {last_error}"
+            ) from last_error
 
         # Keep the UI stable while the heater disconnects/re-advertises after a write.
         if self.data:
