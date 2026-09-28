@@ -45,7 +45,13 @@ async def async_setup_entry(
         return
 
     coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-    await coordinator.async_config_entry_first_refresh()
+
+    # Flow Heater has proven reliable enough for an initial blocking read.
+    # ULTRAMAX can be temporarily busy/unconnectable after discovery; do not
+    # prevent its entities from being created just because the first GATT
+    # connection attempt fails.
+    if parsed.device_type == DEVICE_TYPE_FLOW_HEATER:
+        await coordinator.async_config_entry_first_refresh()
 
     if parsed.device_type == DEVICE_TYPE_FLOW_HEATER:
         async_add_entities([
