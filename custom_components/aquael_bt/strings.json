@@ -24,6 +24,14 @@
       "signal_strength": {
         "name": "Signal strength"
       }
+    },
+    "number": {
+      "target_temperature": {
+        "name": "Target temperature"
+      },
+      "heating_power": {
+        "name": "Heating power"
+      }
     }
   }
 }
