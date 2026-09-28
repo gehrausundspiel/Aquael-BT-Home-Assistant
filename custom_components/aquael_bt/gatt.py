@@ -1,0 +1,68 @@
+"""Active GATT access for Aquael BT devices."""
+
+from __future__ import annotations
+
+from datetime import timedelta
+import logging
+
+from bleak import BleakClient
+from homeassistant.components.bluetooth import async_ble_device_from_address
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+_LOGGER = logging.getLogger(__name__)
+
+FLOW_HEATER_TARGET_UUID = "b3a10002-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_POWER_UUID = "b3a10004-8df0-11ee-b9d1-0242ac120002"
+
+
+class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int]]):
+    """Read the actively connected settings of an Aquael device."""
+
+    def __init__(self, hass: HomeAssistant, address: str) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"Aquael BT GATT {address}",
+            update_interval=timedelta(minutes=1),
+        )
+        self.address = address
+
+    async def _async_update_data(self) -> dict[str, float | int]:
+        ble_device = async_ble_device_from_address(
+            self.hass, self.address, connectable=True
+        )
+        if ble_device is None:
+            raise UpdateFailed("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
+
+        try:
+            async with BleakClient(ble_device, timeout=15.0) as client:
+                target_raw = await client.read_gatt_char(FLOW_HEATER_TARGET_UUID)
+                power_raw = await client.read_gatt_char(FLOW_HEATER_POWER_UUID)
+        except Exception as err:
+            raise UpdateFailed(f"Bluetooth-GATT-Lesen fehlgeschlagen: {err}") from err
+
+        if len(target_raw) < 4 or len(power_raw) < 4:
+            raise UpdateFailed("Unerwartete GATT-Datenlänge")
+
+        return {
+            "target_temperature": int.from_bytes(target_raw[:4], "little") / 100.0,
+            "heating_power_limit": int.from_bytes(power_raw[:4], "little"),
+        }
+
+    async def async_write_uint32(self, characteristic: str, value: int) -> None:
+        """Write one unsigned 32-bit little-endian setting."""
+        ble_device = async_ble_device_from_address(
+            self.hass, self.address, connectable=True
+        )
+        if ble_device is None:
+            raise UpdateFailed("Kein verbindbarer Bluetooth-Pfad zum Gerät verfügbar")
+
+        payload = int(value).to_bytes(4, "little", signed=False)
+        try:
+            async with BleakClient(ble_device, timeout=15.0) as client:
+                await client.write_gatt_char(characteristic, payload, response=True)
+        except Exception as err:
+            raise UpdateFailed(f"Bluetooth-GATT-Schreiben fehlgeschlagen: {err}") from err
+
+        await self.async_request_refresh()
