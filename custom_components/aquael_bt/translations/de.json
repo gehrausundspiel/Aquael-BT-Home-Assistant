@@ -4,9 +4,7 @@
       "user": {
         "title": "Bluetooth-Gerät auswählen",
         "description": "Wähle ein aktuell sichtbares Bluetooth-Gerät. Bekannte Aquael-Geräte werden automatisch erkannt.",
-        "data": {
-          "address": "Gerät"
-        }
+        "data": {"address": "Gerät"}
       }
     },
     "abort": {
@@ -18,20 +16,16 @@
   },
   "entity": {
     "sensor": {
-      "water_temperature": {
-        "name": "Wassertemperatur"
-      },
-      "signal_strength": {
-        "name": "Signalstärke"
-      }
+      "water_temperature": {"name": "Wassertemperatur"},
+      "signal_strength": {"name": "Signalstärke"}
     },
     "number": {
-      "target_temperature": {
-        "name": "Solltemperatur"
-      },
-      "heating_power": {
-        "name": "Heizleistung"
-      }
+      "target_temperature": {"name": "Solltemperatur"},
+      "heating_power": {"name": "Heizleistung"},
+      "flow": {"name": "Durchfluss"}
+    },
+    "switch": {
+      "filtration": {"name": "Filtration"}
     }
   }
 }
