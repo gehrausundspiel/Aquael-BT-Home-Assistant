@@ -1,5 +1,9 @@
 # Aquael BT for Home Assistant
 
+![Aquael BT icon](icon)
+
+**Development version: v0.1.3**
+
 [English](#english) · [Deutsch](#deutsch)
 
 ---
@@ -16,7 +20,7 @@ Development version with initial support for **Aquael Flow Heater BT**.
 
 - Local passive Bluetooth communication
 - Automatic discovery using the Aquael service-data UUID `0xA0B7`
-- Manual setup with a dropdown of currently visible supported devices
+- Manual setup with a dropdown of currently visible Bluetooth devices
 - Device addresses are discovered dynamically and are not hard-coded
 - Flow Heater BT identification from Bluetooth advertisement data
 - Water temperature sensor
@@ -68,7 +72,7 @@ Entwicklungsversion mit erster Unterstützung für den **Aquael Flow Heater BT**
 
 - Lokale passive Bluetooth-Kommunikation
 - Automatische Erkennung über die Aquael-Service-Data-UUID `0xA0B7`
-- Manuelle Einrichtung mit Auswahl aktuell sichtbarer unterstützter Geräte
+- Manuelle Einrichtung mit Auswahl aktuell sichtbarer Bluetooth-Geräte
 - Geräteadressen werden dynamisch erkannt und sind nicht fest einprogrammiert
 - Erkennung des Flow Heater BT anhand der Bluetooth-Advertisement-Daten
 - Sensor für die Wassertemperatur
