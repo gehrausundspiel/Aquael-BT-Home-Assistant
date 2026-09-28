@@ -59,6 +59,7 @@ class AquaelNumberEntity(CoordinatorEntity[AquaelGattCoordinator], NumberEntity)
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
+            connections={("bluetooth", self._address)},
             identifiers={(DOMAIN, self._address)},
             manufacturer=MANUFACTURER,
             model=MODEL_FLOW_HEATER,
