@@ -16,8 +16,18 @@ _LOGGER = logging.getLogger(__name__)
 
 FLOW_HEATER_TARGET_UUID = "b3a10002-8df0-11ee-b9d1-0242ac120002"
 FLOW_HEATER_POWER_UUID = "b3a10004-8df0-11ee-b9d1-0242ac120002"
+
 ULTRAMAX_FILTRATION_UUID = "19b10001-98b5-11ed-a8fc-0242ac120002"
-ULTRAMAX_FLOW_UUID = "19b10003-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_DAY_FLOW_UUID = "19b10003-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_NIGHT_FLOW_UUID = "19b10005-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_SETTINGS_UUID = "19b100ee-98b5-11ed-a8fc-0242ac120002"
+
+ULTRAMAX_DAY_NIGHT_MODE_UUID = "19b20001-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_SUNRISE_UUID = "19b20002-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_SUNSET_UUID = "19b20003-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_TRANSITION_UUID = "19b20004-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_DAY_NIGHT_SETTINGS_UUID = "19b200ee-98b5-11ed-a8fc-0242ac120002"
+
 ULTRAMAX_FLOW_SCALE = 4096
 
 
@@ -63,14 +73,24 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                     }
 
                 if self.device_type == 0x07:
-                    filtration_raw = await client.read_gatt_char(ULTRAMAX_FILTRATION_UUID)
-                    flow_raw = await client.read_gatt_char(ULTRAMAX_FLOW_UUID)
-                    if len(filtration_raw) < 1 or len(flow_raw) < 4:
-                        raise ValueError("Unerwartete GATT-Datenlänge")
-                    raw_flow = int.from_bytes(flow_raw[:4], "little")
+                    settings_raw = await client.read_gatt_char(ULTRAMAX_SETTINGS_UUID)
+                    day_night_raw = await client.read_gatt_char(
+                        ULTRAMAX_DAY_NIGHT_SETTINGS_UUID
+                    )
+                    if len(settings_raw) < 25 or len(day_night_raw) < 13:
+                        raise ValueError("Unerwartete ULTRAMAX-GATT-Datenlänge")
+
+                    day_flow_raw = int.from_bytes(settings_raw[5:9], "little")
+                    night_flow_raw = int.from_bytes(settings_raw[13:17], "little")
+
                     return {
-                        "filtration": filtration_raw[0] != 0,
-                        "flow_percent": raw_flow * 100.0 / ULTRAMAX_FLOW_SCALE,
+                        "filtration": settings_raw[0] != 0,
+                        "day_flow_percent": day_flow_raw * 100.0 / ULTRAMAX_FLOW_SCALE,
+                        "night_flow_percent": night_flow_raw * 100.0 / ULTRAMAX_FLOW_SCALE,
+                        "day_night_mode": day_night_raw[0] != 0,
+                        "sunrise_seconds": int.from_bytes(day_night_raw[1:5], "little"),
+                        "sunset_seconds": int.from_bytes(day_night_raw[5:9], "little"),
+                        "transition_seconds": int.from_bytes(day_night_raw[9:13], "little"),
                     }
 
                 raise ValueError(
@@ -112,20 +132,29 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
 
         if self.data:
             updated = dict(self.data)
+            raw_value = int.from_bytes(payload, "little")
             if characteristic == FLOW_HEATER_TARGET_UUID:
-                updated["target_temperature"] = (
-                    int.from_bytes(payload, "little") / 100.0
-                )
+                updated["target_temperature"] = raw_value / 100.0
             elif characteristic == FLOW_HEATER_POWER_UUID:
-                updated["heating_power_limit"] = int.from_bytes(payload, "little")
+                updated["heating_power_limit"] = raw_value
             elif characteristic == ULTRAMAX_FILTRATION_UUID:
                 updated["filtration"] = payload[0] != 0
-            elif characteristic == ULTRAMAX_FLOW_UUID:
-                updated["flow_percent"] = (
-                    int.from_bytes(payload, "little")
-                    * 100.0
-                    / ULTRAMAX_FLOW_SCALE
+            elif characteristic == ULTRAMAX_DAY_FLOW_UUID:
+                updated["day_flow_percent"] = (
+                    raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
                 )
+            elif characteristic == ULTRAMAX_NIGHT_FLOW_UUID:
+                updated["night_flow_percent"] = (
+                    raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
+                )
+            elif characteristic == ULTRAMAX_DAY_NIGHT_MODE_UUID:
+                updated["day_night_mode"] = payload[0] != 0
+            elif characteristic == ULTRAMAX_SUNRISE_UUID:
+                updated["sunrise_seconds"] = raw_value
+            elif characteristic == ULTRAMAX_SUNSET_UUID:
+                updated["sunset_seconds"] = raw_value
+            elif characteristic == ULTRAMAX_TRANSITION_UUID:
+                updated["transition_seconds"] = raw_value
             self.async_set_updated_data(updated)
         await self.async_request_refresh()
 
