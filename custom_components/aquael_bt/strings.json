@@ -22,10 +22,17 @@
     "number": {
       "target_temperature": {"name": "Target temperature"},
       "heating_power": {"name": "Heating power"},
-      "flow": {"name": "Flow"}
+      "day_flow": {"name": "Day flow"},
+      "night_flow": {"name": "Night flow"},
+      "transition_time": {"name": "Transition time"}
     },
     "switch": {
-      "filtration": {"name": "Filtration"}
+      "filtration": {"name": "Filtration"},
+      "day_night_mode": {"name": "Day & Night mode"}
+    },
+    "time": {
+      "sunrise": {"name": "Sunrise"},
+      "sunset": {"name": "Sunset"}
     }
   }
 }
