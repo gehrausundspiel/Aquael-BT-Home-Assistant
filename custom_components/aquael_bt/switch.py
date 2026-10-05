@@ -11,7 +11,11 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DEVICE_TYPE_ULTRAMAX, DOMAIN, MANUFACTURER, MODEL_ULTRAMAX
-from .gatt import AquaelGattCoordinator, ULTRAMAX_FILTRATION_UUID
+from .gatt import (
+    AquaelGattCoordinator,
+    ULTRAMAX_DAY_NIGHT_MODE_UUID,
+    ULTRAMAX_FILTRATION_UUID,
+)
 from .parser import parse_advertisement
 
 
@@ -31,21 +35,22 @@ async def async_setup_entry(
         return
 
     coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-    # Do not block platform setup on the first BLE connection. The entity is
+    # Do not block platform setup on the first BLE connection. The entities are
     # created immediately and the coordinator retries through normal updates.
-    async_add_entities([AquaelUltramaxFiltrationSwitch(coordinator, address)])
+    async_add_entities([
+        AquaelUltramaxFiltrationSwitch(coordinator, address),
+        AquaelUltramaxDayNightModeSwitch(coordinator, address),
+    ])
 
 
-class AquaelUltramaxFiltrationSwitch(CoordinatorEntity[AquaelGattCoordinator], SwitchEntity):
-    """ULTRAMAX filtration switch."""
+class AquaelUltramaxSwitch(CoordinatorEntity[AquaelGattCoordinator], SwitchEntity):
+    """Base class for ULTRAMAX switches."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "filtration"
 
     def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
         super().__init__(coordinator)
         self._address = address
-        self._attr_unique_id = f"{address}_filtration"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -56,6 +61,16 @@ class AquaelUltramaxFiltrationSwitch(CoordinatorEntity[AquaelGattCoordinator], S
             model=MODEL_ULTRAMAX,
             name=MODEL_ULTRAMAX,
         )
+
+
+class AquaelUltramaxFiltrationSwitch(AquaelUltramaxSwitch):
+    """ULTRAMAX filtration switch."""
+
+    _attr_translation_key = "filtration"
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_filtration"
 
     @property
     def is_on(self) -> bool | None:
@@ -68,3 +83,25 @@ class AquaelUltramaxFiltrationSwitch(CoordinatorEntity[AquaelGattCoordinator], S
 
     async def async_turn_off(self, **kwargs) -> None:
         await self.coordinator.async_write_bool(ULTRAMAX_FILTRATION_UUID, False)
+
+
+class AquaelUltramaxDayNightModeSwitch(AquaelUltramaxSwitch):
+    """ULTRAMAX Day & Night mode switch."""
+
+    _attr_translation_key = "day_night_mode"
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address)
+        self._attr_unique_id = f"{address}_day_night_mode"
+
+    @property
+    def is_on(self) -> bool | None:
+        if not self.coordinator.data:
+            return None
+        return bool(self.coordinator.data["day_night_mode"])
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self.coordinator.async_write_bool(ULTRAMAX_DAY_NIGHT_MODE_UUID, True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self.coordinator.async_write_bool(ULTRAMAX_DAY_NIGHT_MODE_UUID, False)
