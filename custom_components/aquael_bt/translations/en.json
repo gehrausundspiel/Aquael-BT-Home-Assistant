@@ -38,7 +38,7 @@
     "switch": {
       "heating": {"name": "Heating"},
       "filtration": {"name": "Filtration"},
-      "day_night_mode": {"name": "Day & Night mode"}
+      "day_night_mode": {"name": "Day & Night"}
     },
     "time": {
       "sunrise": {"name": "Sunrise"},
