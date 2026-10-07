@@ -27,8 +27,10 @@ from .const import (
 )
 from .gatt import (
     AquaelGattCoordinator,
+    FLOW_HEATER_NIGHT_TARGET_UUID,
     FLOW_HEATER_POWER_UUID,
     FLOW_HEATER_TARGET_UUID,
+    FLOW_HEATER_TRANSITION_UUID,
     ULTRAMAX_DAY_FLOW_UUID,
     ULTRAMAX_DAY_MIN_FLOW_UUID,
     ULTRAMAX_FLOW_SCALE,
@@ -63,7 +65,9 @@ async def async_setup_entry(
     if parsed.device_type == DEVICE_TYPE_FLOW_HEATER:
         async_add_entities([
             AquaelTargetTemperatureNumber(coordinator, address),
+            AquaelNightTemperatureNumber(coordinator, address),
             AquaelHeatingPowerNumber(coordinator, address),
+            AquaelFlowHeaterTransitionTimeNumber(coordinator, address),
         ])
     elif parsed.device_type == DEVICE_TYPE_ULTRAMAX:
         async_add_entities([
@@ -109,6 +113,7 @@ class AquaelTargetTemperatureNumber(AquaelNumberEntity):
 
     def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
         super().__init__(coordinator, address, MODEL_FLOW_HEATER)
+        # Preserve the existing unique ID/entity ID; only the displayed name changes.
         self._attr_unique_id = f"{address}_target_temperature"
 
     @property
@@ -116,7 +121,34 @@ class AquaelTargetTemperatureNumber(AquaelNumberEntity):
         return float(self.coordinator.data["target_temperature"]) if self.coordinator.data else None
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.async_write_uint32(FLOW_HEATER_TARGET_UUID, round(value * 100))
+        await self.coordinator.async_write_uint32(
+            FLOW_HEATER_TARGET_UUID, round(value * 100)
+        )
+
+
+class AquaelNightTemperatureNumber(AquaelNumberEntity):
+    _attr_translation_key = "night_temperature"
+    _attr_device_class = NumberDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_native_min_value = 18.0
+    _attr_native_max_value = 32.0
+    _attr_native_step = 0.1
+    _attr_mode = NumberMode.BOX
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_FLOW_HEATER)
+        self._attr_unique_id = f"{address}_night_temperature"
+
+    @property
+    def native_value(self) -> float | None:
+        if not self.coordinator.data:
+            return None
+        return float(self.coordinator.data["night_target_temperature"])
+
+    async def async_set_native_value(self, value: float) -> None:
+        await self.coordinator.async_write_uint32(
+            FLOW_HEATER_NIGHT_TARGET_UUID, round(value * 100)
+        )
 
 
 class AquaelHeatingPowerNumber(AquaelNumberEntity):
@@ -137,6 +169,31 @@ class AquaelHeatingPowerNumber(AquaelNumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.async_write_uint32(FLOW_HEATER_POWER_UUID, round(value))
+
+
+class AquaelFlowHeaterTransitionTimeNumber(AquaelNumberEntity):
+    _attr_translation_key = "mode_transition_time"
+    _attr_device_class = NumberDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_native_min_value = 0
+    _attr_native_max_value = 180
+    _attr_native_step = 15
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_FLOW_HEATER)
+        self._attr_unique_id = f"{address}_mode_transition_time"
+
+    @property
+    def native_value(self) -> float | None:
+        if not self.coordinator.data:
+            return None
+        return round(float(self.coordinator.data["transition_seconds"]) / 60.0)
+
+    async def async_set_native_value(self, value: float) -> None:
+        await self.coordinator.async_write_uint32(
+            FLOW_HEATER_TRANSITION_UUID, round(value * 60)
+        )
 
 
 class AquaelUltramaxFlowBase(AquaelNumberEntity):
