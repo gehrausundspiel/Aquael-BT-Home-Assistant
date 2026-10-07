@@ -1,6 +1,5 @@
 """Sensor platform for Aquael BT."""
 
-from homeassistant.components.bluetooth import async_last_service_info
 from homeassistant.components.bluetooth.passive_update_processor import (
     PassiveBluetoothDataProcessor,
     PassiveBluetoothDataUpdate,
@@ -27,8 +26,8 @@ from .const import (
     MANUFACTURER,
     MODEL_ULTRAMAX,
 )
-from .gatt import AquaelGattCoordinator
-from .parser import AquaelAdvertisement, parse_advertisement
+from .gatt import AquaelGattCoordinator, async_get_gatt_coordinator
+from .parser import AquaelAdvertisement
 
 TEMPERATURE_KEY = PassiveBluetoothEntityKey("temperature", None)
 RSSI_KEY = PassiveBluetoothEntityKey("signal_strength", None)
@@ -103,12 +102,13 @@ async def async_setup_entry(
     if address is None:
         return
 
-    service_info = async_last_service_info(hass, address, connectable=False)
-    parsed = parse_advertisement(service_info) if service_info else None
-    if parsed is None or parsed.device_type != DEVICE_TYPE_ULTRAMAX:
+    gatt_coordinator = await async_get_gatt_coordinator(hass, entry)
+    if (
+        gatt_coordinator is None
+        or gatt_coordinator.device_type != DEVICE_TYPE_ULTRAMAX
+    ):
         return
 
-    gatt_coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
     async_add_entities([AquaelUltramaxWaveModeRawSensor(gatt_coordinator, address)])
 
 
