@@ -24,8 +24,14 @@
       "target_temperature": {"name": "Target temperature"},
       "heating_power": {"name": "Heating power"},
       "day_flow": {"name": "Day flow"},
+      "day_min_flow": {"name": "Day minimum flow"},
       "night_flow": {"name": "Night flow"},
+      "night_min_flow": {"name": "Night minimum flow"},
+      "wave_period": {"name": "Wave period"},
       "transition_time": {"name": "Transition time"}
+    },
+    "select": {
+      "wave_mode": {"name": "Wave mode"}
     },
     "switch": {
       "filtration": {"name": "Filtration"},
