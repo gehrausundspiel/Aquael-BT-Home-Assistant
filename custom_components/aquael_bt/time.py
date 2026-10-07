@@ -13,9 +13,18 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DEVICE_TYPE_ULTRAMAX, DOMAIN, MANUFACTURER, MODEL_ULTRAMAX
+from .const import (
+    DEVICE_TYPE_FLOW_HEATER,
+    DEVICE_TYPE_ULTRAMAX,
+    DOMAIN,
+    MANUFACTURER,
+    MODEL_FLOW_HEATER,
+    MODEL_ULTRAMAX,
+)
 from .gatt import (
     AquaelGattCoordinator,
+    FLOW_HEATER_SUNRISE_UUID,
+    FLOW_HEATER_SUNSET_UUID,
     ULTRAMAX_SUNRISE_UUID,
     ULTRAMAX_SUNSET_UUID,
 )
@@ -27,32 +36,54 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up ULTRAMAX time settings."""
+    """Set up Aquael time settings."""
     address = entry.unique_id
     if address is None:
         return
 
     service_info = async_last_service_info(hass, address, connectable=False)
     parsed = parse_advertisement(service_info) if service_info else None
-    if parsed is None or parsed.device_type != DEVICE_TYPE_ULTRAMAX:
+    if parsed is None:
         return
 
     coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-    async_add_entities([
-        AquaelUltramaxSunriseTime(coordinator, address),
-        AquaelUltramaxSunsetTime(coordinator, address),
-    ])
+    if parsed.device_type == DEVICE_TYPE_FLOW_HEATER:
+        async_add_entities([
+            AquaelSunriseTime(
+                coordinator, address, MODEL_FLOW_HEATER, FLOW_HEATER_SUNRISE_UUID
+            ),
+            AquaelSunsetTime(
+                coordinator, address, MODEL_FLOW_HEATER, FLOW_HEATER_SUNSET_UUID
+            ),
+        ])
+    elif parsed.device_type == DEVICE_TYPE_ULTRAMAX:
+        async_add_entities([
+            AquaelSunriseTime(
+                coordinator, address, MODEL_ULTRAMAX, ULTRAMAX_SUNRISE_UUID
+            ),
+            AquaelSunsetTime(
+                coordinator, address, MODEL_ULTRAMAX, ULTRAMAX_SUNSET_UUID
+            ),
+        ])
 
 
-class AquaelUltramaxTime(CoordinatorEntity[AquaelGattCoordinator], TimeEntity):
-    """Base class for ULTRAMAX time settings."""
+class AquaelTime(CoordinatorEntity[AquaelGattCoordinator], TimeEntity):
+    """Base class for Aquael time settings."""
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+    def __init__(
+        self,
+        coordinator: AquaelGattCoordinator,
+        address: str,
+        model: str,
+        characteristic: str,
+    ) -> None:
         super().__init__(coordinator)
         self._address = address
+        self._model = model
+        self._characteristic = characteristic
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -60,11 +91,12 @@ class AquaelUltramaxTime(CoordinatorEntity[AquaelGattCoordinator], TimeEntity):
             connections={("bluetooth", self._address)},
             identifiers={(DOMAIN, self._address)},
             manufacturer=MANUFACTURER,
-            model=MODEL_ULTRAMAX,
-            name=MODEL_ULTRAMAX,
+            model=self._model,
+            name=self._model,
         )
 
-    def _time_from_seconds(self, value: int) -> time | None:
+    @staticmethod
+    def _time_from_seconds(value: int) -> time | None:
         if not 0 <= value < 24 * 60 * 60:
             return None
         hours, remainder = divmod(value, 3600)
@@ -76,13 +108,19 @@ class AquaelUltramaxTime(CoordinatorEntity[AquaelGattCoordinator], TimeEntity):
         return value.hour * 3600 + value.minute * 60 + value.second
 
 
-class AquaelUltramaxSunriseTime(AquaelUltramaxTime):
-    """ULTRAMAX sunrise start."""
+class AquaelSunriseTime(AquaelTime):
+    """Aquael sunrise start."""
 
     _attr_translation_key = "sunrise"
 
-    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
-        super().__init__(coordinator, address)
+    def __init__(
+        self,
+        coordinator: AquaelGattCoordinator,
+        address: str,
+        model: str,
+        characteristic: str,
+    ) -> None:
+        super().__init__(coordinator, address, model, characteristic)
         self._attr_unique_id = f"{address}_sunrise"
 
     @property
@@ -93,17 +131,23 @@ class AquaelUltramaxSunriseTime(AquaelUltramaxTime):
 
     async def async_set_value(self, value: time) -> None:
         await self.coordinator.async_write_uint32(
-            ULTRAMAX_SUNRISE_UUID, self._seconds_from_time(value)
+            self._characteristic, self._seconds_from_time(value)
         )
 
 
-class AquaelUltramaxSunsetTime(AquaelUltramaxTime):
-    """ULTRAMAX sunset end."""
+class AquaelSunsetTime(AquaelTime):
+    """Aquael sunset end."""
 
     _attr_translation_key = "sunset"
 
-    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
-        super().__init__(coordinator, address)
+    def __init__(
+        self,
+        coordinator: AquaelGattCoordinator,
+        address: str,
+        model: str,
+        characteristic: str,
+    ) -> None:
+        super().__init__(coordinator, address, model, characteristic)
         self._attr_unique_id = f"{address}_sunset"
 
     @property
@@ -114,5 +158,5 @@ class AquaelUltramaxSunsetTime(AquaelUltramaxTime):
 
     async def async_set_value(self, value: time) -> None:
         await self.coordinator.async_write_uint32(
-            ULTRAMAX_SUNSET_UUID, self._seconds_from_time(value)
+            self._characteristic, self._seconds_from_time(value)
         )
