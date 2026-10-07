@@ -1,5 +1,6 @@
 """Sensor platform for Aquael BT."""
 
+from homeassistant.components.bluetooth import async_last_service_info
 from homeassistant.components.bluetooth.passive_update_processor import (
     PassiveBluetoothDataProcessor,
     PassiveBluetoothDataUpdate,
@@ -13,13 +14,21 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT, UnitOfTemperature
+from homeassistant.const import EntityCategory, SIGNAL_STRENGTH_DECIBELS_MILLIWATT, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DEVICE_TYPE_FLOW_HEATER, DOMAIN, MANUFACTURER
-from .parser import AquaelAdvertisement
+from .const import (
+    DEVICE_TYPE_FLOW_HEATER,
+    DEVICE_TYPE_ULTRAMAX,
+    DOMAIN,
+    MANUFACTURER,
+    MODEL_ULTRAMAX,
+)
+from .gatt import AquaelGattCoordinator
+from .parser import AquaelAdvertisement, parse_advertisement
 
 TEMPERATURE_KEY = PassiveBluetoothEntityKey("temperature", None)
 RSSI_KEY = PassiveBluetoothEntityKey("signal_strength", None)
@@ -90,8 +99,69 @@ async def async_setup_entry(
     )
     entry.async_on_unload(coordinator.async_register_processor(processor))
 
+    address = entry.unique_id
+    if address is None:
+        return
+
+    service_info = async_last_service_info(hass, address, connectable=False)
+    parsed = parse_advertisement(service_info) if service_info else None
+    if parsed is None or parsed.device_type != DEVICE_TYPE_ULTRAMAX:
+        return
+
+    gatt_coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
+    async_add_entities([AquaelUltramaxWaveModeRawSensor(gatt_coordinator, address)])
+
 
 class AquaelBluetoothSensorEntity(PassiveBluetoothProcessorEntity, SensorEntity):
     @property
     def native_value(self) -> float | int | str | None:
         return self.processor.entity_data.get(self.entity_key)
+
+
+class AquaelUltramaxWaveModeRawSensor(
+    CoordinatorEntity[AquaelGattCoordinator], SensorEntity
+):
+    """Raw ULTRAMAX wave mode value for protocol reverse engineering."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "wave_mode_raw"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:sine-wave"
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator)
+        self._address = address
+        self._attr_unique_id = f"{address}_wave_mode_raw"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            connections={("bluetooth", self._address)},
+            identifiers={(DOMAIN, self._address)},
+            manufacturer=MANUFACTURER,
+            model=MODEL_ULTRAMAX,
+            name=MODEL_ULTRAMAX,
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        return int(self.coordinator.data["wave_mode_raw"])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int | float]:
+        if not self.coordinator.data:
+            return {}
+        data = self.coordinator.data
+        return {
+            "day_flow_raw": int(data["day_flow_raw"]),
+            "day_flow_percent": round(float(data["day_flow_percent"]), 2),
+            "day_min_flow_raw": int(data["day_min_flow_raw"]),
+            "day_min_flow_percent": round(float(data["day_min_flow_percent"]), 2),
+            "night_flow_raw": int(data["night_flow_raw"]),
+            "night_flow_percent": round(float(data["night_flow_percent"]), 2),
+            "night_min_flow_raw": int(data["night_min_flow_raw"]),
+            "night_min_flow_percent": round(float(data["night_min_flow_percent"]), 2),
+            "wave_period_seconds": int(data["wave_period_seconds"]),
+        }
