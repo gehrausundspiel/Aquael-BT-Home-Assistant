@@ -8,9 +8,13 @@ import logging
 
 from bleak import BleakClient
 from bleak_retry_connector import establish_connection
-from homeassistant.components.bluetooth import async_ble_device_from_address
+from homeassistant.components.bluetooth import async_ble_device_from_address, async_last_service_info
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .const import DOMAIN
+from .parser import parse_advertisement
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -235,3 +239,48 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
     async def async_write_bool(self, characteristic: str, value: bool) -> None:
         """Write one boolean byte setting."""
         await self.async_write(characteristic, b"\x01" if value else b"\x00")
+
+
+async def async_get_gatt_coordinator(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> AquaelGattCoordinator | None:
+    """Return one shared active GATT coordinator per config entry."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    coordinators = domain_data.setdefault("gatt_coordinators", {})
+    locks = domain_data.setdefault("gatt_locks", {})
+
+    existing = coordinators.get(entry.entry_id)
+    if existing is not None:
+        return existing
+
+    lock = locks.setdefault(entry.entry_id, asyncio.Lock())
+    async with lock:
+        existing = coordinators.get(entry.entry_id)
+        if existing is not None:
+            return existing
+
+        address = entry.unique_id
+        if address is None:
+            return None
+
+        service_info = async_last_service_info(hass, address, connectable=False)
+        parsed = parse_advertisement(service_info) if service_info else None
+        if parsed is None:
+            return None
+
+        coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
+        coordinators[entry.entry_id] = coordinator
+
+        # One initial read for all entities. A failed BLE attempt does not block
+        # platform setup; normal coordinator polling retries later.
+        await coordinator.async_refresh()
+        return coordinator
+
+
+def remove_gatt_coordinator(hass: HomeAssistant, entry_id: str) -> None:
+    """Forget the shared GATT coordinator for an unloaded config entry."""
+    domain_data = hass.data.get(DOMAIN)
+    if not domain_data:
+        return
+    domain_data.get("gatt_coordinators", {}).pop(entry_id, None)
+    domain_data.get("gatt_locks", {}).pop(entry_id, None)
