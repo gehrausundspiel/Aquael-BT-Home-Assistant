@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .gatt import remove_gatt_coordinator
 from .parser import parse_advertisement
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,4 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AquaelConfigEntry) -> bo
 
 async def async_unload_entry(hass: HomeAssistant, entry: AquaelConfigEntry) -> bool:
     """Unload an Aquael BT config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        remove_gatt_coordinator(hass, entry.entry_id)
+    return unloaded
