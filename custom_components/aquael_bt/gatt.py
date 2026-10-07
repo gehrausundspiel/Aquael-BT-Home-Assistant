@@ -14,8 +14,17 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 _LOGGER = logging.getLogger(__name__)
 
+FLOW_HEATER_HEATING_UUID = "b3a10001-8df0-11ee-b9d1-0242ac120002"
 FLOW_HEATER_TARGET_UUID = "b3a10002-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_NIGHT_TARGET_UUID = "b3a10003-8df0-11ee-b9d1-0242ac120002"
 FLOW_HEATER_POWER_UUID = "b3a10004-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_SETTINGS_UUID = "b3a100ee-8df0-11ee-b9d1-0242ac120002"
+
+FLOW_HEATER_DAY_NIGHT_MODE_UUID = "b3a20001-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_SUNRISE_UUID = "b3a20002-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_SUNSET_UUID = "b3a20003-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_TRANSITION_UUID = "b3a20004-8df0-11ee-b9d1-0242ac120002"
+FLOW_HEATER_DAY_NIGHT_SETTINGS_UUID = "b3a200ee-8df0-11ee-b9d1-0242ac120002"
 
 ULTRAMAX_FILTRATION_UUID = "19b10001-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_WAVE_MODE_UUID = "19b10002-98b5-11ed-a8fc-0242ac120002"
@@ -67,13 +76,36 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
             client = await self._async_connect()
             try:
                 if self.device_type == 0x04:
-                    target_raw = await client.read_gatt_char(FLOW_HEATER_TARGET_UUID)
-                    power_raw = await client.read_gatt_char(FLOW_HEATER_POWER_UUID)
-                    if len(target_raw) < 4 or len(power_raw) < 4:
-                        raise ValueError("Unerwartete GATT-Datenlänge")
+                    settings_raw = await client.read_gatt_char(FLOW_HEATER_SETTINGS_UUID)
+                    day_night_raw = await client.read_gatt_char(
+                        FLOW_HEATER_DAY_NIGHT_SETTINGS_UUID
+                    )
+                    if len(settings_raw) < 13 or len(day_night_raw) < 13:
+                        raise ValueError("Unerwartete Flow-Heater-GATT-Datenlänge")
+
                     return {
-                        "target_temperature": int.from_bytes(target_raw[:4], "little") / 100.0,
-                        "heating_power_limit": int.from_bytes(power_raw[:4], "little"),
+                        "heating": settings_raw[0] != 0,
+                        "target_temperature": int.from_bytes(
+                            settings_raw[1:5], "little"
+                        )
+                        / 100.0,
+                        "night_target_temperature": int.from_bytes(
+                            settings_raw[5:9], "little"
+                        )
+                        / 100.0,
+                        "heating_power_limit": int.from_bytes(
+                            settings_raw[9:13], "little"
+                        ),
+                        "day_night_mode": day_night_raw[0] != 0,
+                        "sunrise_seconds": int.from_bytes(
+                            day_night_raw[1:5], "little"
+                        ),
+                        "sunset_seconds": int.from_bytes(
+                            day_night_raw[5:9], "little"
+                        ),
+                        "transition_seconds": int.from_bytes(
+                            day_night_raw[9:13], "little"
+                        ),
                     }
 
                 if self.device_type == 0x07:
@@ -149,10 +181,22 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
         if self.data:
             updated = dict(self.data)
             raw_value = int.from_bytes(payload, "little")
-            if characteristic == FLOW_HEATER_TARGET_UUID:
+            if characteristic == FLOW_HEATER_HEATING_UUID:
+                updated["heating"] = payload[0] != 0
+            elif characteristic == FLOW_HEATER_TARGET_UUID:
                 updated["target_temperature"] = raw_value / 100.0
+            elif characteristic == FLOW_HEATER_NIGHT_TARGET_UUID:
+                updated["night_target_temperature"] = raw_value / 100.0
             elif characteristic == FLOW_HEATER_POWER_UUID:
                 updated["heating_power_limit"] = raw_value
+            elif characteristic == FLOW_HEATER_DAY_NIGHT_MODE_UUID:
+                updated["day_night_mode"] = payload[0] != 0
+            elif characteristic == FLOW_HEATER_SUNRISE_UUID:
+                updated["sunrise_seconds"] = raw_value
+            elif characteristic == FLOW_HEATER_SUNSET_UUID:
+                updated["sunset_seconds"] = raw_value
+            elif characteristic == FLOW_HEATER_TRANSITION_UUID:
+                updated["transition_seconds"] = raw_value
             elif characteristic == ULTRAMAX_FILTRATION_UUID:
                 updated["filtration"] = payload[0] != 0
             elif characteristic == ULTRAMAX_WAVE_MODE_UUID:
