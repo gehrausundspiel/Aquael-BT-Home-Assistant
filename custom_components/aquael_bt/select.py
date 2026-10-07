@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from homeassistant.components.bluetooth import async_last_service_info
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
@@ -12,8 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DEVICE_TYPE_ULTRAMAX, DOMAIN, MANUFACTURER, MODEL_ULTRAMAX
-from .gatt import AquaelGattCoordinator, ULTRAMAX_WAVE_MODE_UUID
-from .parser import parse_advertisement
+from .gatt import AquaelGattCoordinator, ULTRAMAX_WAVE_MODE_UUID, async_get_gatt_coordinator
 
 WAVE_MODES: dict[str, int] = {
     "Konstant": 0,
@@ -33,12 +31,10 @@ async def async_setup_entry(
     if address is None:
         return
 
-    service_info = async_last_service_info(hass, address, connectable=False)
-    parsed = parse_advertisement(service_info) if service_info else None
-    if parsed is None or parsed.device_type != DEVICE_TYPE_ULTRAMAX:
+    coordinator = await async_get_gatt_coordinator(hass, entry)
+    if coordinator is None or coordinator.device_type != DEVICE_TYPE_ULTRAMAX:
         return
 
-    coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
     async_add_entities([AquaelUltramaxWaveModeSelect(coordinator, address)])
 
 
