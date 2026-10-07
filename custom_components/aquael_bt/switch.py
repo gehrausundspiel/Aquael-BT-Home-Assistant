@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from homeassistant.components.bluetooth import async_last_service_info
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -20,12 +19,12 @@ from .const import (
 )
 from .gatt import (
     AquaelGattCoordinator,
+    async_get_gatt_coordinator,
     FLOW_HEATER_DAY_NIGHT_MODE_UUID,
     FLOW_HEATER_HEATING_UUID,
     ULTRAMAX_DAY_NIGHT_MODE_UUID,
     ULTRAMAX_FILTRATION_UUID,
 )
-from .parser import parse_advertisement
 
 
 async def async_setup_entry(
@@ -38,18 +37,16 @@ async def async_setup_entry(
     if address is None:
         return
 
-    service_info = async_last_service_info(hass, address, connectable=False)
-    parsed = parse_advertisement(service_info) if service_info else None
-    if parsed is None:
+    coordinator = await async_get_gatt_coordinator(hass, entry)
+    if coordinator is None:
         return
 
-    coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-    if parsed.device_type == DEVICE_TYPE_FLOW_HEATER:
+    if coordinator.device_type == DEVICE_TYPE_FLOW_HEATER:
         async_add_entities([
             AquaelFlowHeaterHeatingSwitch(coordinator, address),
             AquaelFlowHeaterDayNightModeSwitch(coordinator, address),
         ])
-    elif parsed.device_type == DEVICE_TYPE_ULTRAMAX:
+    elif coordinator.device_type == DEVICE_TYPE_ULTRAMAX:
         async_add_entities([
             AquaelUltramaxFiltrationSwitch(coordinator, address),
             AquaelUltramaxDayNightModeSwitch(coordinator, address),
