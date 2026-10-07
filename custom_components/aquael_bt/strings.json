@@ -21,8 +21,10 @@
       "wave_mode_raw": {"name": "Wave mode raw"}
     },
     "number": {
-      "target_temperature": {"name": "Target temperature"},
+      "target_temperature": {"name": "Day temperature"},
+      "night_temperature": {"name": "Night temperature"},
       "heating_power": {"name": "Heating power"},
+      "mode_transition_time": {"name": "Mode transition time"},
       "day_flow": {"name": "Day flow"},
       "day_min_flow": {"name": "Day minimum flow"},
       "night_flow": {"name": "Night flow"},
@@ -34,6 +36,7 @@
       "wave_mode": {"name": "Wave mode"}
     },
     "switch": {
+      "heating": {"name": "Heating"},
       "filtration": {"name": "Filtration"},
       "day_night_mode": {"name": "Day & Night mode"}
     },
