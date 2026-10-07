@@ -24,8 +24,14 @@
       "target_temperature": {"name": "Solltemperatur"},
       "heating_power": {"name": "Heizleistung"},
       "day_flow": {"name": "Tagdurchfluss"},
+      "day_min_flow": {"name": "Tag Mindestdurchfluss"},
       "night_flow": {"name": "Nachtdurchfluss"},
+      "night_min_flow": {"name": "Nacht Mindestdurchfluss"},
+      "wave_period": {"name": "Wellenperiode"},
       "transition_time": {"name": "Übergangszeit"}
+    },
+    "select": {
+      "wave_mode": {"name": "Wellenmodus"}
     },
     "switch": {
       "filtration": {"name": "Filtration"},
