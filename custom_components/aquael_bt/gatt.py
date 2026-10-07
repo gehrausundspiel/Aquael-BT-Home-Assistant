@@ -18,8 +18,12 @@ FLOW_HEATER_TARGET_UUID = "b3a10002-8df0-11ee-b9d1-0242ac120002"
 FLOW_HEATER_POWER_UUID = "b3a10004-8df0-11ee-b9d1-0242ac120002"
 
 ULTRAMAX_FILTRATION_UUID = "19b10001-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_WAVE_MODE_UUID = "19b10002-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_DAY_FLOW_UUID = "19b10003-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_DAY_MIN_FLOW_UUID = "19b10004-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_NIGHT_FLOW_UUID = "19b10005-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_NIGHT_MIN_FLOW_UUID = "19b10006-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_WAVE_PERIOD_UUID = "19b10007-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_SETTINGS_UUID = "19b100ee-98b5-11ed-a8fc-0242ac120002"
 
 ULTRAMAX_DAY_NIGHT_MODE_UUID = "19b20001-98b5-11ed-a8fc-0242ac120002"
@@ -151,16 +155,22 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                 updated["heating_power_limit"] = raw_value
             elif characteristic == ULTRAMAX_FILTRATION_UUID:
                 updated["filtration"] = payload[0] != 0
+            elif characteristic == ULTRAMAX_WAVE_MODE_UUID:
+                updated["wave_mode_raw"] = raw_value
             elif characteristic == ULTRAMAX_DAY_FLOW_UUID:
                 updated["day_flow_raw"] = raw_value
-                updated["day_flow_percent"] = (
-                    raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
-                )
+                updated["day_flow_percent"] = raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
+            elif characteristic == ULTRAMAX_DAY_MIN_FLOW_UUID:
+                updated["day_min_flow_raw"] = raw_value
+                updated["day_min_flow_percent"] = raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
             elif characteristic == ULTRAMAX_NIGHT_FLOW_UUID:
                 updated["night_flow_raw"] = raw_value
-                updated["night_flow_percent"] = (
-                    raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
-                )
+                updated["night_flow_percent"] = raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
+            elif characteristic == ULTRAMAX_NIGHT_MIN_FLOW_UUID:
+                updated["night_min_flow_raw"] = raw_value
+                updated["night_min_flow_percent"] = raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
+            elif characteristic == ULTRAMAX_WAVE_PERIOD_UUID:
+                updated["wave_period_seconds"] = raw_value
             elif characteristic == ULTRAMAX_DAY_NIGHT_MODE_UUID:
                 updated["day_night_mode"] = payload[0] != 0
             elif characteristic == ULTRAMAX_SUNRISE_UUID:
