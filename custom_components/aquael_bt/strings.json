@@ -17,7 +17,8 @@
   "entity": {
     "sensor": {
       "water_temperature": {"name": "Water temperature"},
-      "signal_strength": {"name": "Signal strength"}
+      "signal_strength": {"name": "Signal strength"},
+      "wave_mode_raw": {"name": "Wave mode raw"}
     },
     "number": {
       "target_temperature": {"name": "Target temperature"},
