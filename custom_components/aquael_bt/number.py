@@ -30,9 +30,12 @@ from .gatt import (
     FLOW_HEATER_POWER_UUID,
     FLOW_HEATER_TARGET_UUID,
     ULTRAMAX_DAY_FLOW_UUID,
+    ULTRAMAX_DAY_MIN_FLOW_UUID,
     ULTRAMAX_FLOW_SCALE,
     ULTRAMAX_NIGHT_FLOW_UUID,
+    ULTRAMAX_NIGHT_MIN_FLOW_UUID,
     ULTRAMAX_TRANSITION_UUID,
+    ULTRAMAX_WAVE_PERIOD_UUID,
 )
 from .parser import parse_advertisement
 
@@ -54,10 +57,6 @@ async def async_setup_entry(
 
     coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
 
-    # Flow Heater has proven reliable enough for an initial blocking read.
-    # ULTRAMAX can be temporarily busy/unconnectable after discovery; do not
-    # prevent its entities from being created just because the first GATT
-    # connection attempt fails.
     if parsed.device_type == DEVICE_TYPE_FLOW_HEATER:
         await coordinator.async_config_entry_first_refresh()
 
@@ -69,7 +68,10 @@ async def async_setup_entry(
     elif parsed.device_type == DEVICE_TYPE_ULTRAMAX:
         async_add_entities([
             AquaelUltramaxDayFlowNumber(coordinator, address),
+            AquaelUltramaxDayMinFlowNumber(coordinator, address),
             AquaelUltramaxNightFlowNumber(coordinator, address),
+            AquaelUltramaxNightMinFlowNumber(coordinator, address),
+            AquaelUltramaxWavePeriodNumber(coordinator, address),
             AquaelUltramaxTransitionTimeNumber(coordinator, address),
         ])
 
@@ -137,60 +139,93 @@ class AquaelHeatingPowerNumber(AquaelNumberEntity):
         await self.coordinator.async_write_uint32(FLOW_HEATER_POWER_UUID, round(value))
 
 
-class AquaelUltramaxDayFlowNumber(AquaelNumberEntity):
-    """Configured ULTRAMAX daytime flow."""
-
-    _attr_translation_key = "day_flow"
+class AquaelUltramaxFlowBase(AquaelNumberEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_native_min_value = 50
     _attr_native_max_value = 100
     _attr_native_step = 1
     _attr_mode = NumberMode.SLIDER
 
-    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
-        super().__init__(coordinator, address, MODEL_ULTRAMAX)
-        # Keep the existing unique ID so current dashboards/automations remain intact.
-        self._attr_unique_id = f"{address}_flow"
+    data_key: str
+    characteristic: str
 
     @property
     def native_value(self) -> float | None:
         if not self.coordinator.data:
             return None
-        return round(float(self.coordinator.data["day_flow_percent"]))
+        return round(float(self.coordinator.data[self.data_key]))
 
     async def async_set_native_value(self, value: float) -> None:
         raw = round(value * ULTRAMAX_FLOW_SCALE / 100)
-        await self.coordinator.async_write_uint32(ULTRAMAX_DAY_FLOW_UUID, raw)
+        await self.coordinator.async_write_uint32(self.characteristic, raw)
 
 
-class AquaelUltramaxNightFlowNumber(AquaelNumberEntity):
-    """Configured ULTRAMAX nighttime flow."""
+class AquaelUltramaxDayFlowNumber(AquaelUltramaxFlowBase):
+    _attr_translation_key = "day_flow"
+    data_key = "day_flow_percent"
+    characteristic = ULTRAMAX_DAY_FLOW_UUID
 
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_ULTRAMAX)
+        self._attr_unique_id = f"{address}_flow"
+
+
+class AquaelUltramaxDayMinFlowNumber(AquaelUltramaxFlowBase):
+    _attr_translation_key = "day_min_flow"
+    data_key = "day_min_flow_percent"
+    characteristic = ULTRAMAX_DAY_MIN_FLOW_UUID
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_ULTRAMAX)
+        self._attr_unique_id = f"{address}_day_min_flow"
+
+
+class AquaelUltramaxNightFlowNumber(AquaelUltramaxFlowBase):
     _attr_translation_key = "night_flow"
-    _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_native_min_value = 50
-    _attr_native_max_value = 100
-    _attr_native_step = 1
-    _attr_mode = NumberMode.SLIDER
+    data_key = "night_flow_percent"
+    characteristic = ULTRAMAX_NIGHT_FLOW_UUID
 
     def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
         super().__init__(coordinator, address, MODEL_ULTRAMAX)
         self._attr_unique_id = f"{address}_night_flow"
 
+
+class AquaelUltramaxNightMinFlowNumber(AquaelUltramaxFlowBase):
+    _attr_translation_key = "night_min_flow"
+    data_key = "night_min_flow_percent"
+    characteristic = ULTRAMAX_NIGHT_MIN_FLOW_UUID
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_ULTRAMAX)
+        self._attr_unique_id = f"{address}_night_min_flow"
+
+
+class AquaelUltramaxWavePeriodNumber(AquaelNumberEntity):
+    _attr_translation_key = "wave_period"
+    _attr_device_class = NumberDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_native_min_value = 1
+    _attr_native_max_value = 60
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_ULTRAMAX)
+        self._attr_unique_id = f"{address}_wave_period"
+
     @property
     def native_value(self) -> float | None:
         if not self.coordinator.data:
             return None
-        return round(float(self.coordinator.data["night_flow_percent"]))
+        return float(self.coordinator.data["wave_period_seconds"])
 
     async def async_set_native_value(self, value: float) -> None:
-        raw = round(value * ULTRAMAX_FLOW_SCALE / 100)
-        await self.coordinator.async_write_uint32(ULTRAMAX_NIGHT_FLOW_UUID, raw)
+        await self.coordinator.async_write_uint32(
+            ULTRAMAX_WAVE_PERIOD_UUID, round(value)
+        )
 
 
 class AquaelUltramaxTransitionTimeNumber(AquaelNumberEntity):
-    """Configured Day & Night flow transition duration."""
-
     _attr_translation_key = "transition_time"
     _attr_device_class = NumberDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
