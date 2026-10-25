@@ -2,13 +2,17 @@
 
 import logging
 
-from homeassistant.components.bluetooth import BluetoothScanningMode
+from homeassistant.components.bluetooth import (
+    BluetoothScanningMode,
+    async_last_service_info,
+)
 from homeassistant.components.bluetooth.passive_update_processor import (
     PassiveBluetoothProcessorCoordinator,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from .gatt import remove_gatt_coordinator
 from .parser import parse_advertisement
@@ -30,6 +34,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: AquaelConfigEntry) -> bo
     """Set up Aquael BT from a config entry."""
     address = entry.unique_id
     assert address is not None
+
+    # The device type is taken from the advertisement. Right after a Home
+    # Assistant restart the device may not have been seen yet; retry later
+    # instead of silently setting up without the GATT-based entities.
+    if async_last_service_info(hass, address, connectable=False) is None:
+        raise ConfigEntryNotReady(
+            f"Aquael device {address} has not been seen via Bluetooth yet"
+        )
 
     coordinator = PassiveBluetoothProcessorCoordinator(
         hass,

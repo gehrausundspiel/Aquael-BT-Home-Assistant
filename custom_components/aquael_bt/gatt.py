@@ -45,7 +45,46 @@ ULTRAMAX_SUNSET_UUID = "19b20003-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_TRANSITION_UUID = "19b20004-98b5-11ed-a8fc-0242ac120002"
 ULTRAMAX_DAY_NIGHT_SETTINGS_UUID = "19b200ee-98b5-11ed-a8fc-0242ac120002"
 
+ULTRAMAX_FEEDING_ENABLED_UUID = "19b30001-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_FEEDING_SLOTS_UUID = "19b30002-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_FEEDING_TIME_UUIDS = (
+    "19b30003-98b5-11ed-a8fc-0242ac120002",
+    "19b30004-98b5-11ed-a8fc-0242ac120002",
+    "19b30005-98b5-11ed-a8fc-0242ac120002",
+    "19b30006-98b5-11ed-a8fc-0242ac120002",
+)
+ULTRAMAX_FEEDING_FLOW_UUID = "19b30007-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_FEEDING_SETTINGS_UUID = "19b300ee-98b5-11ed-a8fc-0242ac120002"
+ULTRAMAX_FEEDING_SLOT_COUNT = 4
+
 ULTRAMAX_FLOW_SCALE = 4096
+
+
+def parse_ultramax_feeding(raw: bytes) -> dict[str, float | int | bool]:
+    """Decode the 25-byte ULTRAMAX Fish feeding block (19b300ee).
+
+    Layout (little-endian), verified against the Aquael app:
+      byte 0      feeding enabled (bool)
+      bytes 1-4   one byte per feeding time: enabled (bool) for time 1..4
+      bytes 5-20  feeding time 1..4, seconds after midnight
+      bytes 21-24 water flow during feeding, raw (4096 = 100 %)
+    """
+    if len(raw) < 25:
+        raise ValueError("Unexpected ULTRAMAX feeding GATT data length")
+    data: dict[str, float | int | bool] = {
+        "feeding_enabled": raw[0] != 0,
+    }
+    for index in range(ULTRAMAX_FEEDING_SLOT_COUNT):
+        data[f"feeding_time_{index + 1}_enabled"] = raw[1 + index] != 0
+    for index in range(ULTRAMAX_FEEDING_SLOT_COUNT):
+        start = 5 + index * 4
+        data[f"feeding_time_{index + 1}_seconds"] = int.from_bytes(
+            raw[start : start + 4], "little"
+        )
+    flow_raw = int.from_bytes(raw[21:25], "little")
+    data["feeding_flow_raw"] = flow_raw
+    data["feeding_flow_percent"] = flow_raw * 100.0 / ULTRAMAX_FLOW_SCALE
+    return data
 
 
 class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]):
@@ -127,7 +166,7 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                     night_min_flow_raw = int.from_bytes(settings_raw[17:21], "little")
                     wave_period_seconds = int.from_bytes(settings_raw[21:25], "little")
 
-                    return {
+                    data: dict[str, float | int | bool] = {
                         "filtration": settings_raw[0] != 0,
                         "wave_mode_raw": wave_mode_raw,
                         "day_flow_raw": day_flow_raw,
@@ -144,6 +183,16 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                         "sunset_seconds": int.from_bytes(day_night_raw[5:9], "little"),
                         "transition_seconds": int.from_bytes(day_night_raw[9:13], "little"),
                     }
+
+                    # Fish feeding is optional: older firmware may not expose it.
+                    try:
+                        feeding_raw = await client.read_gatt_char(
+                            ULTRAMAX_FEEDING_SETTINGS_UUID
+                        )
+                        data.update(parse_ultramax_feeding(bytes(feeding_raw)))
+                    except Exception as err:  # noqa: BLE001
+                        _LOGGER.debug("ULTRAMAX feeding settings not available: %s", err)
+                    return data
 
                 raise ValueError(
                     f"Nicht unterstützter Aquael-Gerätetyp: {self.device_type:#x}"
@@ -227,6 +276,19 @@ class AquaelGattCoordinator(DataUpdateCoordinator[dict[str, float | int | bool]]
                 updated["sunset_seconds"] = raw_value
             elif characteristic == ULTRAMAX_TRANSITION_UUID:
                 updated["transition_seconds"] = raw_value
+            elif characteristic == ULTRAMAX_FEEDING_ENABLED_UUID:
+                updated["feeding_enabled"] = payload[0] != 0
+            elif characteristic == ULTRAMAX_FEEDING_SLOTS_UUID:
+                for index in range(ULTRAMAX_FEEDING_SLOT_COUNT):
+                    updated[f"feeding_time_{index + 1}_enabled"] = (
+                        len(payload) > index and payload[index] != 0
+                    )
+            elif characteristic in ULTRAMAX_FEEDING_TIME_UUIDS:
+                slot = ULTRAMAX_FEEDING_TIME_UUIDS.index(characteristic) + 1
+                updated[f"feeding_time_{slot}_seconds"] = raw_value
+            elif characteristic == ULTRAMAX_FEEDING_FLOW_UUID:
+                updated["feeding_flow_raw"] = raw_value
+                updated["feeding_flow_percent"] = raw_value * 100.0 / ULTRAMAX_FLOW_SCALE
             self.async_set_updated_data(updated)
         await self.async_request_refresh()
 
@@ -269,11 +331,13 @@ async def async_get_gatt_coordinator(
             return None
 
         coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-        coordinators[entry.entry_id] = coordinator
 
         # One initial read for all entities. A failed BLE attempt does not block
-        # platform setup; normal coordinator polling retries later.
+        # platform setup; normal coordinator polling retries later. Publish the
+        # coordinator only after this read, so platforms waiting on the lock get
+        # populated data instead of an empty coordinator.
         await coordinator.async_refresh()
+        coordinators[entry.entry_id] = coordinator
         return coordinator
 
 

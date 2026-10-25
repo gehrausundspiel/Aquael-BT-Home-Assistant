@@ -33,6 +33,7 @@ from .gatt import (
     FLOW_HEATER_TRANSITION_UUID,
     ULTRAMAX_DAY_FLOW_UUID,
     ULTRAMAX_DAY_MIN_FLOW_UUID,
+    ULTRAMAX_FEEDING_FLOW_UUID,
     ULTRAMAX_FLOW_SCALE,
     ULTRAMAX_NIGHT_FLOW_UUID,
     ULTRAMAX_NIGHT_MIN_FLOW_UUID,
@@ -70,6 +71,7 @@ async def async_setup_entry(
             AquaelUltramaxNightMinFlowNumber(coordinator, address),
             AquaelUltramaxWavePeriodNumber(coordinator, address),
             AquaelUltramaxTransitionTimeNumber(coordinator, address),
+            AquaelUltramaxFeedingFlowNumber(coordinator, address),
         ])
 
 
@@ -298,3 +300,21 @@ class AquaelUltramaxTransitionTimeNumber(AquaelNumberEntity):
         await self.coordinator.async_write_uint32(
             ULTRAMAX_TRANSITION_UUID, round(value * 60)
         )
+
+
+class AquaelUltramaxFeedingFlowNumber(AquaelUltramaxFlowBase):
+    """Water flow while the ULTRAMAX Fish feeding pause is active."""
+
+    _attr_translation_key = "feeding_flow"
+    # The Aquael app allows feeding flows below the normal 50 % minimum.
+    _attr_native_min_value = 0
+    data_key = "feeding_flow_percent"
+    characteristic = ULTRAMAX_FEEDING_FLOW_UUID
+
+    def __init__(self, coordinator: AquaelGattCoordinator, address: str) -> None:
+        super().__init__(coordinator, address, MODEL_ULTRAMAX)
+        self._attr_unique_id = f"{address}_feeding_flow"
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.data_key in (self.coordinator.data or {})
