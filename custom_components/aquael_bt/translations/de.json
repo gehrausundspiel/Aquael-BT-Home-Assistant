@@ -30,7 +30,8 @@
       "night_flow": {"name": "Nachtdurchfluss"},
       "night_min_flow": {"name": "Nacht Mindestdurchfluss"},
       "wave_period": {"name": "Wellenperiode"},
-      "transition_time": {"name": "Übergangszeit"}
+      "transition_time": {"name": "Übergangszeit"},
+      "feeding_flow": {"name": "Durchfluss während der Fütterung"}
     },
     "select": {
       "wave_mode": {"name": "Wellenmodus"}
@@ -38,11 +39,14 @@
     "switch": {
       "heating": {"name": "Heizung"},
       "filtration": {"name": "Filtration"},
-      "day_night_mode": {"name": "Tag & Nacht"}
+      "day_night_mode": {"name": "Tag & Nacht"},
+      "fish_feeding": {"name": "Fütterung"},
+      "feeding_time_enabled": {"name": "Fütterungszeit {slot} aktiv"}
     },
     "time": {
       "sunrise": {"name": "Sonnenaufgang"},
-      "sunset": {"name": "Sonnenuntergang"}
+      "sunset": {"name": "Sonnenuntergang"},
+      "feeding_time": {"name": "Fütterungszeit {slot}"}
     }
   }
 }
