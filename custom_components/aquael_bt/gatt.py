@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
 import logging
+from datetime import timedelta
 
 from bleak import BleakClient
 from bleak_retry_connector import establish_connection
-from homeassistant.components.bluetooth import async_ble_device_from_address, async_last_service_info
+from homeassistant.components.bluetooth import (
+    async_ble_device_from_address,
+    async_last_service_info,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -269,11 +272,13 @@ async def async_get_gatt_coordinator(
             return None
 
         coordinator = AquaelGattCoordinator(hass, address, parsed.device_type)
-        coordinators[entry.entry_id] = coordinator
 
         # One initial read for all entities. A failed BLE attempt does not block
-        # platform setup; normal coordinator polling retries later.
+        # platform setup; normal coordinator polling retries later. Keep the
+        # coordinator private until this attempt finishes so concurrent platform
+        # setups wait on the lock instead of using it before its first refresh.
         await coordinator.async_refresh()
+        coordinators[entry.entry_id] = coordinator
         return coordinator
 
 
