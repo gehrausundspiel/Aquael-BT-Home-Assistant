@@ -21,6 +21,7 @@
       "wave_mode_raw": {"name": "Wellenmodus Raw"}
     },
     "number": {
+      "feeding_flow": {"name": "Durchfluss beim Füttern"},
       "target_temperature": {"name": "Tagestemperatur"},
       "night_temperature": {"name": "Nachttemperatur"},
       "heating_power": {"name": "Heizleistung"},
@@ -30,23 +31,22 @@
       "night_flow": {"name": "Nachtdurchfluss"},
       "night_min_flow": {"name": "Nacht Mindestdurchfluss"},
       "wave_period": {"name": "Wellenperiode"},
-      "transition_time": {"name": "Übergangszeit"},
-      "feeding_flow": {"name": "Durchfluss während der Fütterung"}
+      "transition_time": {"name": "Übergangszeit"}
     },
     "select": {
       "wave_mode": {"name": "Wellenmodus"}
     },
     "switch": {
+      "fish_feeding": {"name": "Fütterung"},
+      "feeding_time_enabled": {"name": "Fütterungszeit {slot} aktiviert"},
       "heating": {"name": "Heizung"},
       "filtration": {"name": "Filtration"},
-      "day_night_mode": {"name": "Tag & Nacht"},
-      "fish_feeding": {"name": "Fütterung"},
-      "feeding_time_enabled": {"name": "Fütterungszeit {slot} aktiv"}
+      "day_night_mode": {"name": "Tag & Nacht"}
     },
     "time": {
+      "feeding_time": {"name": "Fütterungszeit {slot}"},
       "sunrise": {"name": "Sonnenaufgang"},
-      "sunset": {"name": "Sonnenuntergang"},
-      "feeding_time": {"name": "Fütterungszeit {slot}"}
+      "sunset": {"name": "Sonnenuntergang"}
     }
   }
 }

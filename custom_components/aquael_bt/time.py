@@ -20,12 +20,12 @@ from .const import (
     MODEL_FLOW_HEATER,
     MODEL_ULTRAMAX,
 )
+from .feeding import async_get_feeding_times
 from .gatt import (
     AquaelGattCoordinator,
     async_get_gatt_coordinator,
     FLOW_HEATER_SUNRISE_UUID,
     FLOW_HEATER_SUNSET_UUID,
-    ULTRAMAX_FEEDING_TIME_UUIDS,
     ULTRAMAX_SUNRISE_UUID,
     ULTRAMAX_SUNSET_UUID,
 )
@@ -62,11 +62,8 @@ async def async_setup_entry(
             AquaelSunsetTime(
                 coordinator, address, MODEL_ULTRAMAX, ULTRAMAX_SUNSET_UUID
             ),
-            *(
-                AquaelUltramaxFeedingTime(coordinator, address, slot, characteristic)
-                for slot, characteristic in enumerate(ULTRAMAX_FEEDING_TIME_UUIDS, 1)
-            ),
         ])
+        async_add_entities(await async_get_feeding_times(hass, entry))
 
 
 class AquaelTime(CoordinatorEntity[AquaelGattCoordinator], TimeEntity):
@@ -157,39 +154,6 @@ class AquaelSunsetTime(AquaelTime):
         if not self.coordinator.data:
             return None
         return self._time_from_seconds(int(self.coordinator.data["sunset_seconds"]))
-
-    async def async_set_value(self, value: time) -> None:
-        await self.coordinator.async_write_uint32(
-            self._characteristic, self._seconds_from_time(value)
-        )
-
-
-class AquaelUltramaxFeedingTime(AquaelTime):
-    """One of the four ULTRAMAX Fish feeding times."""
-
-    _attr_translation_key = "feeding_time"
-
-    def __init__(
-        self,
-        coordinator: AquaelGattCoordinator,
-        address: str,
-        slot: int,
-        characteristic: str,
-    ) -> None:
-        super().__init__(coordinator, address, MODEL_ULTRAMAX, characteristic)
-        self._data_key = f"feeding_time_{slot}_seconds"
-        self._attr_unique_id = f"{address}_feeding_time_{slot}"
-        self._attr_translation_placeholders = {"slot": str(slot)}
-
-    @property
-    def available(self) -> bool:
-        return super().available and self._data_key in (self.coordinator.data or {})
-
-    @property
-    def native_value(self) -> time | None:
-        if not self.coordinator.data or self._data_key not in self.coordinator.data:
-            return None
-        return self._time_from_seconds(int(self.coordinator.data[self._data_key]))
 
     async def async_set_value(self, value: time) -> None:
         await self.coordinator.async_write_uint32(

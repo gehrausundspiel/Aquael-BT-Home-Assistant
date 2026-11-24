@@ -1,5 +1,7 @@
 # ULTRAMAX BT – GATT protocol notes
 
+Protocol observations contributed by @phaeton82 in PR #1.
+
 Observed on an **ULTRAMAX 2000** (firmware 1.7.0, hardware 1.2.0, software 2.18.0)
 and verified by changing settings in the official Aquael app and re-reading the
 characteristics. All integers are little-endian. Flow values use a raw scale where
@@ -64,3 +66,12 @@ Not exposed by the app; left untouched (no writes).
 `41 51 | xx xx | <MAC 6 bytes> | 07 | 00 E0 A1 xx xx 9C 09 00 …`
 Byte 10 `0x07` = ULTRAMAX. Bytes 16–17 match the current day flow raw value
 (`9C 09` = 2460 ≈ 60 %).
+
+## Integration scope
+
+The feeding extension lives in `custom_components/aquael_bt/feeding.py`.
+It uses its own coordinator and one additional Bluetooth read per minute.
+Normal filter and heater polling, settings and entity IDs are unchanged.
+Only feeding service UUIDs are read or written by this extension.
+Each feeding write reads fresh device data and serializes the complete
+read-modify-write transaction, including the cache update.

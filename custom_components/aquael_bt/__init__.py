@@ -35,12 +35,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: AquaelConfigEntry) -> bo
     address = entry.unique_id
     assert address is not None
 
-    # The device type is taken from the advertisement. Right after a Home
-    # Assistant restart the device may not have been seen yet; retry later
-    # instead of silently setting up without the GATT-based entities.
-    if async_last_service_info(hass, address, connectable=False) is None:
+    # The platforms identify the device from its advertisement. During startup
+    # the Bluetooth proxy may not have reported it yet. Retry the whole entry
+    # instead of permanently skipping its GATT entities.
+    service_info = async_last_service_info(hass, address, connectable=False)
+    if service_info is None or parse_advertisement(service_info) is None:
         raise ConfigEntryNotReady(
-            f"Aquael device {address} has not been seen via Bluetooth yet"
+            f"Waiting for a supported Aquael Bluetooth advertisement from {address}"
         )
 
     coordinator = PassiveBluetoothProcessorCoordinator(
