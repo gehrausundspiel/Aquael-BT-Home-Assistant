@@ -17,6 +17,7 @@ from .const import (
     MODEL_FLOW_HEATER,
     MODEL_ULTRAMAX,
 )
+from .feeding import async_get_feeding_switches
 from .gatt import (
     AquaelGattCoordinator,
     async_get_gatt_coordinator,
@@ -51,6 +52,7 @@ async def async_setup_entry(
             AquaelUltramaxFiltrationSwitch(coordinator, address),
             AquaelUltramaxDayNightModeSwitch(coordinator, address),
         ])
+        async_add_entities(await async_get_feeding_switches(hass, entry))
 
 
 class AquaelSwitch(CoordinatorEntity[AquaelGattCoordinator], SwitchEntity):

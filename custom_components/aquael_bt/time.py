@@ -20,6 +20,7 @@ from .const import (
     MODEL_FLOW_HEATER,
     MODEL_ULTRAMAX,
 )
+from .feeding import async_get_feeding_times
 from .gatt import (
     AquaelGattCoordinator,
     async_get_gatt_coordinator,
@@ -62,6 +63,7 @@ async def async_setup_entry(
                 coordinator, address, MODEL_ULTRAMAX, ULTRAMAX_SUNSET_UUID
             ),
         ])
+        async_add_entities(await async_get_feeding_times(hass, entry))
 
 
 class AquaelTime(CoordinatorEntity[AquaelGattCoordinator], TimeEntity):

@@ -21,6 +21,7 @@
       "wave_mode_raw": {"name": "Wave mode raw"}
     },
     "number": {
+      "feeding_flow": {"name": "Flow during feeding"},
       "target_temperature": {"name": "Day temperature"},
       "night_temperature": {"name": "Night temperature"},
       "heating_power": {"name": "Heating power"},
@@ -36,11 +37,14 @@
       "wave_mode": {"name": "Wave mode"}
     },
     "switch": {
+      "fish_feeding": {"name": "Fish feeding"},
+      "feeding_time_enabled": {"name": "Feeding time {slot} enabled"},
       "heating": {"name": "Heating"},
       "filtration": {"name": "Filtration"},
       "day_night_mode": {"name": "Day & Night"}
     },
     "time": {
+      "feeding_time": {"name": "Feeding time {slot}"},
       "sunrise": {"name": "Sunrise"},
       "sunset": {"name": "Sunset"}
     }

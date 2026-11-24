@@ -24,6 +24,7 @@ from .const import (
     MODEL_FLOW_HEATER,
     MODEL_ULTRAMAX,
 )
+from .feeding import async_get_feeding_numbers
 from .gatt import (
     AquaelGattCoordinator,
     async_get_gatt_coordinator,
@@ -71,6 +72,7 @@ async def async_setup_entry(
             AquaelUltramaxWavePeriodNumber(coordinator, address),
             AquaelUltramaxTransitionTimeNumber(coordinator, address),
         ])
+        async_add_entities(await async_get_feeding_numbers(hass, entry))
 
 
 class AquaelNumberEntity(CoordinatorEntity[AquaelGattCoordinator], NumberEntity):
